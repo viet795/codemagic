@@ -1,0 +1,59 @@
+workflows:
+   react-native-ios:
+        name: React Native iOS
+        max_build_duration: 40
+        instance_type: mac_mini_m1
+        integrations:
+          app_store_connect: Codemagic
+        cache:
+          cache_paths:
+            - $HOME/Library/Caches/CocoaPods
+            - $CM_BUILD_DIR/node_modules
+        triggering:
+          events:
+            - push
+          branch_patterns:          
+            - pattern: main
+          cancel_previous_builds: true
+        environment:
+          ios_signing:
+            provisioning_profiles:
+              - Profile_App_Prod
+            certificates:
+              - Mediaone_Distribution
+          vars:
+            XCODE_WORKSPACE: "codemagic.xcworkspace" 
+            XCODE_SCHEME: "codemagic" 
+            APP_ID: 6505052952s
+          node: v18.20.3
+          xcode: 15.4
+          cocoapods: default
+        scripts:
+            - name: Set up code signing settings on Xcode project
+              script: |
+                xcode-project use-profiles
+            - name: Install yarn dependencies
+              script: |
+                yarn install
+            - name: Install CocoaPods dependencies
+              script: |
+                cd ios && pod install
+            - name: Build ipa for distribution
+              script: |
+                xcode-project build-ipa \
+                  --workspace "$CM_BUILD_DIR/ios/$XCODE_WORKSPACE" \
+                  --scheme "$XCODE_SCHEME"
+        artifacts:
+            - build/ios/ipa/*.ipa
+            - /tmp/xcodebuild_logs/*.log
+        publishing:
+          email:
+            recipients:
+              - vietnv795@gmail.com
+            notify:
+              success: true
+              failure: false
+          app_store_connect:
+            auth: integration
+            submit_to_testflight: true
+            submit_to_app_store: false
